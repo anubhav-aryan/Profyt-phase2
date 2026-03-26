@@ -2,11 +2,11 @@
 
 import { signOut } from "next-auth/react";
 
-export function SignOutButton() {
+export function ClientSignOutButton() {
   return (
     <button
       type="button"
-      onClick={() => signOut({ callbackUrl: "/login" })}
+      onClick={() => signOut({ callbackUrl: "/portal/login" })}
       className="profyt-btn-secondary px-6"
     >
       Sign out

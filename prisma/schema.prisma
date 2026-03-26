@@ -12,3 +12,27 @@ model AppMeta {
   key   String  @id
   value String?
 }
+
+model Client {
+  id          String       @id @default(cuid())
+  clientCode  String       @unique
+  companyName String
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  users       ClientUser[]
+}
+
+model ClientUser {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  email        String
+  passwordHash String
+  name         String   @default("")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([clientId, email])
+}
