@@ -1,0 +1,14 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Anchor table until engagement-centric models (`engagement_id`, `metric_snapshots`, etc.) are added.
+model AppMeta {
+  key   String  @id
+  value String?
+}
