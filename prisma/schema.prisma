@@ -14,13 +14,30 @@ model AppMeta {
 }
 
 model Client {
-  id          String       @id @default(cuid())
-  clientCode  String       @unique
+  id          String            @id @default(cuid())
+  clientCode  String            @unique
   companyName String
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   users       ClientUser[]
+  submissions ModelSubmission[]
+}
+
+model ModelSubmission {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  templateId   String
+  fileName     String
+  filePath     String
+  fileSize     Int
+  status       String   @default("uploaded")
+  uploadedById String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([clientId, templateId])
 }
 
 model ClientUser {

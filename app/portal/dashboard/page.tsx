@@ -1,7 +1,9 @@
 import { auth } from "@/lib/auth";
 import { ClientSignOutButton } from "@/components/ClientSignOutButton";
 import { ProfytWordmark } from "@/components/ProfytWordmark";
+import { AssessmentGate } from "@/components/portal/AssessmentGate";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 const wrap = "mx-auto max-w-[1100px] px-5 md:px-12";
 
@@ -29,18 +31,44 @@ export default async function PortalDashboardPage() {
         </div>
       </header>
 
-      <main className={`${wrap} mt-10`}>
-        <div className="profyt-card max-w-lg p-8 md:p-10">
-          <p className="text-sm leading-relaxed text-mid">
-            Welcome
-            {session.user.name ? (
-              <span className="text-black">, {session.user.name}</span>
-            ) : null}
-            . Signed in as{" "}
-            <span className="font-medium text-black">{session.user.email}</span>.
-            Engagement summaries and diagnostics will appear here.
-          </p>
-        </div>
+      <main className={`${wrap} mt-10 space-y-12`}>
+        {/* Qualitative assessments */}
+        <section>
+          <div className="mb-6 flex items-center gap-3">
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-dark">
+              Qualitative assessments
+            </p>
+            <div className="h-px flex-1 bg-pale" />
+          </div>
+          <AssessmentGate />
+        </section>
+
+        {/* Phase 1 quantitative templates */}
+        <section>
+          <div className="mb-6 flex items-center gap-3">
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.12em] text-dark">
+              Quantitative templates
+            </p>
+            <div className="h-px flex-1 bg-pale" />
+          </div>
+          <Link
+            href="/portal/assessment"
+            className="profyt-card group flex items-start justify-between gap-4 p-6 transition-colors hover:border-black md:p-8"
+          >
+            <div>
+              <h2 className="font-serif text-xl text-black">
+                Phase 1 Assessment
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-mid">
+                Download the 4 Excel templates (P&amp;L, Unit Economics, Cash Flow,
+                Revenue Model), fill them in, and upload your completed files.
+              </p>
+            </div>
+            <span className="mt-1 shrink-0 font-mono text-[11px] font-semibold uppercase tracking-wider text-light group-hover:text-black">
+              →
+            </span>
+          </Link>
+        </section>
       </main>
     </div>
   );

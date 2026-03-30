@@ -150,3 +150,67 @@ export async function getPhase1QualitativeBundle(
     scaleRisk,
   };
 }
+
+export type WriteLeakagePayload = {
+  founderName: string;
+  companyName: string;
+  email: string;
+  mobile: string;
+  arrRange: string;
+  stage: string;
+  challenge: string;
+  consent: boolean;
+  sector: string;
+  answers: unknown;
+  notes: unknown;
+  totalPct: number;
+  verdictTitle: string;
+  bucketScores: unknown;
+  patternsDetected: string[];
+  criticalRiskCount: number;
+  executiveSummary: string;
+  ipAddress: string;
+};
+
+export type WriteScaleRiskPayload = {
+  founderName: string;
+  companyName: string;
+  email: string;
+  mobile: string;
+  arrRange: string;
+  stage: string;
+  challenge: string;
+  consent: boolean;
+  sector: string;
+  answers: unknown;
+  composite: number;
+  growthPct: number;
+  capitalPct: number;
+  band: string;
+  bucketScores: unknown;
+  ipAddress: string;
+};
+
+export async function writeLeakageSubmission(
+  payload: WriteLeakagePayload
+): Promise<string> {
+  const db = await getMongoDb();
+  const doc = {
+    ...payload,
+    submittedAt: new Date(),
+  };
+  const result = await db.collection(LEAKAGE_SUBMISSIONS_COLLECTION).insertOne(doc);
+  return result.insertedId.toHexString();
+}
+
+export async function writeScaleRiskSubmission(
+  payload: WriteScaleRiskPayload
+): Promise<string> {
+  const db = await getMongoDb();
+  const doc = {
+    ...payload,
+    submittedAt: new Date(),
+  };
+  const result = await db.collection(SCALE_RISK_SUBMISSIONS_COLLECTION).insertOne(doc);
+  return result.insertedId.toHexString();
+}
