@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
 import { isAuthBypassEmail } from "@/lib/auth-bypass";
+import { authConfig } from "@/lib/auth.config";
 
 const CLIENT_PROFILES_COLLECTION = "clientprofiles";
 
@@ -13,12 +13,15 @@ const secret =
     : undefined);
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  ...authConfig,
   secret,
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    // Keep Google from the base config unchanged
+    ...authConfig.providers.filter((p) => {
+      const id = typeof p === "object" && "id" in p ? p.id : null;
+      return id !== "client";
     }),
+    // Full Credentials provider with Node.js-only authorize logic
     Credentials({
       id: "client",
       name: "Client",
@@ -43,11 +46,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!client) return null;
 
         const clientUser = await prisma.clientUser.findFirst({
-          where: {
-            clientId: client.id,
-            email: emailRaw,
-            isActive: true,
-          },
+          where: { clientId: client.id, email: emailRaw, isActive: true },
         });
         if (!clientUser) return null;
 
@@ -65,6 +64,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async signIn({ user, account }) {
       if (account?.provider === "client") {
         return !!user;
@@ -82,32 +82,5 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       return doc !== null;
     },
-    async jwt({ token, user, account }) {
-      if (account?.provider === "google" && user) {
-        token.role = "analyst";
-        token.clientId = null;
-        token.sub = user.id ?? token.sub;
-      }
-      if (account?.provider === "client" && user) {
-        token.role = "client";
-        token.clientId = user.clientId ?? null;
-        token.sub = user.id ?? token.sub;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.role =
-          token.role === "client" ? "client" : "analyst";
-        session.user.clientId =
-          typeof token.clientId === "string" ? token.clientId : null;
-      }
-      return session;
-    },
   },
-  pages: {
-    signIn: "/login",
-    error: "/login",
-  },
-  trustHost: true,
 });

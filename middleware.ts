@@ -1,6 +1,10 @@
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
 import { isSuperAdminEmail } from "@/lib/superadmin";
 import { NextResponse } from "next/server";
+
+// Lightweight NextAuth instance — only JWT decode, no Prisma/bcrypt/MongoDB.
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const path = req.nextUrl.pathname;
