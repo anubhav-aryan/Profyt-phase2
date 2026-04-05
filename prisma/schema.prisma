@@ -22,20 +22,24 @@ model Client {
   updatedAt   DateTime          @updatedAt
   users       ClientUser[]
   submissions ModelSubmission[]
+  metrics     MetricSnapshot[]
 }
 
 model ModelSubmission {
-  id           String   @id @default(cuid())
+  id           String           @id @default(cuid())
   clientId     String
-  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client       Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
   templateId   String
   fileName     String
   filePath     String
   fileSize     Int
-  status       String   @default("uploaded")
+  status       String           @default("uploaded")
   uploadedById String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  parsedData   Json?
+  parsedAt     DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  metrics      MetricSnapshot[]
 
   @@unique([clientId, templateId])
 }
@@ -52,4 +56,25 @@ model ClientUser {
   updatedAt    DateTime @updatedAt
 
   @@unique([clientId, email])
+}
+
+model MetricSnapshot {
+  id           String          @id @default(cuid())
+  submissionId String
+  submission   ModelSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  clientId     String
+  client       Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  templateId   String
+  sheetName    String
+  section      String
+  metricKey    String
+  label        String
+  numericValue Float?
+  textValue    String?
+  period       String?
+  unit         String?
+  createdAt    DateTime        @default(now())
+
+  @@index([clientId, templateId])
+  @@index([metricKey])
 }

@@ -1,7 +1,7 @@
 "use client";
 
+import { portalClientSignIn } from "@/app/portal/login/actions";
 import { ProfytWordmark } from "@/components/ProfytWordmark";
-import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import Link from "next/link";
@@ -14,8 +14,9 @@ function PortalLoginInner() {
   const [step, setStep] = useState<1 | 2>(1);
   const [clientCode, setClientCode] = useState("");
   const [companyName, setCompanyName] = useState<string | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  /** Remount credential inputs (uncontrolled) so browser autofill + fresh fields work. */
+  const [credentialsFormKey, setCredentialsFormKey] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +36,8 @@ function PortalLoginInner() {
         return;
       }
       setCompanyName(data.companyName ?? null);
+      setCredentialsFormKey((k) => k + 1);
+      setShowPassword(false);
       setStep(2);
     } catch {
       setError("Could not validate client ID");
@@ -43,20 +46,30 @@ function PortalLoginInner() {
     }
   }
 
-  async function onSignIn(e: React.FormEvent) {
+  async function onSignIn(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const res = await signIn("client", {
-        clientCode: clientCode.trim(),
-        email: email.trim(),
-        password,
-        redirect: false,
-        callbackUrl,
-      });
-      if (res?.error) {
-        setError("Invalid email or password");
+      const form = e.currentTarget;
+      const emailEl = form.elements.namedItem("email") as HTMLInputElement | null;
+      const passwordEl = form.elements.namedItem("password") as HTMLInputElement | null;
+      const emailFromForm = (emailEl?.value ?? "").trim();
+      const passwordFromForm = passwordEl?.value ?? "";
+
+      const result = await portalClientSignIn(
+        clientCode.trim(),
+        emailFromForm,
+        passwordFromForm,
+        callbackUrl
+      );
+
+      if (!result.ok) {
+        setError(
+          result.error === "credentials"
+            ? "Invalid email or password"
+            : "Sign-in failed. Try again or contact support."
+        );
         return;
       }
       router.push(callbackUrl);
@@ -96,10 +109,13 @@ function PortalLoginInner() {
         {process.env.NODE_ENV === "development" ? (
           <p className="mb-6 border border-pale bg-off px-3 py-2 text-[11px] leading-relaxed text-mid">
             <span className="font-mono font-semibold text-dark">Dev:</span> run{" "}
-            <code className="font-mono text-[10px]">npm run db:seed</code> then
-            try Client ID <code className="font-mono text-black">demo-client</code>
-            , user <code className="font-mono text-black">demo-user</code>,
-            password <code className="font-mono text-black">profyt</code>.
+            <code className="font-mono text-[10px]">npm run db:seed</code> against
+            the same <code className="font-mono text-[10px]">DATABASE_URL</code>{" "}
+            this server uses. Credentials:{" "}
+            <code className="font-mono text-black">demo-client</code> /{" "}
+            <code className="font-mono text-black">demo-user</code> /{" "}
+            <code className="font-mono text-black">profyt</code>. Deployed
+            environments need that user in Postgres (seed or Admin panel).
           </p>
         ) : null}
 
@@ -138,7 +154,11 @@ function PortalLoginInner() {
             </button>
           </form>
         ) : (
-          <form onSubmit={onSignIn} className="space-y-5">
+          <form
+            key={credentialsFormKey}
+            onSubmit={onSignIn}
+            className="space-y-5"
+          >
             {companyName ? (
               <p className="border border-pale bg-off px-3 py-2 text-sm text-dark">
                 <span className="font-medium text-black">{companyName}</span>
@@ -158,8 +178,7 @@ function PortalLoginInner() {
                 type="text"
                 autoComplete="username"
                 className="profyt-input mt-2"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                defaultValue=""
                 disabled={loading}
                 required
               />
@@ -171,24 +190,36 @@ function PortalLoginInner() {
               >
                 Password
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                className="profyt-input mt-2"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                required
-              />
+              <div className="relative mt-2">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  className="profyt-input w-full pr-19"
+                  defaultValue=""
+                  disabled={loading}
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-1 flex items-center border border-transparent bg-white px-2 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-mid hover:text-black disabled:opacity-50"
+                  onClick={() => setShowPassword((v) => !v)}
+                  disabled={loading}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => {
                   setStep(1);
-                  setPassword("");
+                  setShowPassword(false);
+                  setCredentialsFormKey((k) => k + 1);
                   setError(null);
                 }}
                 className="profyt-btn-secondary flex-1"

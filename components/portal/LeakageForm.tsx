@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { BUCKETS } from "@/lib/assessments/leakage-data";
 import type { LeakageAnswers } from "@/lib/assessments/leakage-scoring";
 
 type Props = {
-  onComplete: () => void;
+  onComplete?: () => void;
+  /** If set, navigates here after successful submit (e.g. `/portal/dashboard`). */
+  redirectTo?: string;
 };
 
-export function LeakageForm({ onComplete }: Props) {
+export function LeakageForm({ onComplete, redirectTo }: Props) {
+  const router = useRouter();
   const [bucketIdx, setBucketIdx] = useState(0);
   const [questionIdx, setQuestionIdx] = useState(0);
   const [answers, setAnswers] = useState<LeakageAnswers>(
@@ -78,7 +82,12 @@ export function LeakageForm({ onComplete }: Props) {
         setError(data.error ?? "Submit failed");
         return;
       }
-      onComplete();
+      if (redirectTo) {
+        router.push(redirectTo);
+        router.refresh();
+      } else {
+        onComplete?.();
+      }
     } catch {
       setError("Request failed");
     } finally {

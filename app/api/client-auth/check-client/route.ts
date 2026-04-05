@@ -16,7 +16,10 @@ export async function POST(request: NextRequest) {
     }
 
     const client = await prisma.client.findFirst({
-      where: { clientCode, isActive: true },
+      where: {
+        clientCode: { equals: clientCode, mode: "insensitive" },
+        isActive: true,
+      },
       select: { companyName: true },
     });
 

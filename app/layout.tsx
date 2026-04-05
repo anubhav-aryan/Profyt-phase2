@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Mono, DM_Serif_Display, Instrument_Sans } from "next/font/google";
+import Script from "next/script";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
@@ -39,9 +40,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning={true}
       className={`${instrumentSans.variable} ${dmSerif.variable} ${dmMono.variable} h-full`}
     >
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-full flex-col" suppressHydrationWarning={true}>
+        {/* Runs before React hydrates — removes attrs some extensions inject on <body> (e.g. cz-shortcut-listen). */}
+        <Script id="strip-extension-body-attrs" strategy="beforeInteractive">
+          {`try{var b=document.body;if(b)b.removeAttribute("cz-shortcut-listen");}catch(e){}`}
+        </Script>
         <Providers>{children}</Providers>
       </body>
     </html>

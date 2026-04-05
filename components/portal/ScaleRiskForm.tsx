@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { BUCKETS } from "@/lib/assessments/scale-risk-data";
 import type { ScaleRiskAnswers } from "@/lib/assessments/scale-risk-scoring";
 
 type Props = {
-  onComplete: () => void;
+  onComplete?: () => void;
+  /** If set, navigates here after successful submit (e.g. `/portal/dashboard`). */
+  redirectTo?: string;
 };
 
-export function ScaleRiskForm({ onComplete }: Props) {
+export function ScaleRiskForm({ onComplete, redirectTo }: Props) {
+  const router = useRouter();
   const [bucketIdx, setBucketIdx] = useState(0);
   const [questionIdx, setQuestionIdx] = useState(0);
   const [answers, setAnswers] = useState<ScaleRiskAnswers>(
@@ -73,7 +77,12 @@ export function ScaleRiskForm({ onComplete }: Props) {
         setError(data.error ?? "Submit failed");
         return;
       }
-      onComplete();
+      if (redirectTo) {
+        router.push(redirectTo);
+        router.refresh();
+      } else {
+        onComplete?.();
+      }
     } catch {
       setError("Request failed");
     } finally {

@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { compare as bcryptCompare } from "bcryptjs";
 import { isAuthBypassEmail } from "@/lib/auth-bypass";
 import { authConfig } from "@/lib/auth.config";
 
@@ -33,15 +34,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         const clientCode = credentials?.clientCode?.toString().trim();
         const emailRaw = credentials?.email?.toString().trim().toLowerCase();
-        const password = credentials?.password?.toString() ?? "";
+        const password = credentials?.password?.toString().trim() ?? "";
 
         if (!clientCode || !emailRaw || !password) return null;
 
         const { prisma } = await import("@/lib/prisma");
-        const bcrypt = await import("bcryptjs");
 
         const client = await prisma.client.findFirst({
-          where: { clientCode, isActive: true },
+          where: {
+            clientCode: { equals: clientCode, mode: "insensitive" },
+            isActive: true,
+          },
         });
         if (!client) return null;
 
@@ -50,7 +53,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         });
         if (!clientUser) return null;
 
-        const ok = await bcrypt.compare(password, clientUser.passwordHash);
+        const ok = await bcryptCompare(password, clientUser.passwordHash);
         if (!ok) return null;
 
         return {

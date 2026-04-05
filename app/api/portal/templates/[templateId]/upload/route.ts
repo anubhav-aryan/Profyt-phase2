@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isValidTemplateId } from "@/lib/templates/model-templates";
+import { getParser } from "@/lib/parsers";
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, unlink, mkdir } from "fs/promises";
 import { existsSync } from "fs";
@@ -63,7 +65,7 @@ export async function POST(
   // Remove old file if one exists for this client+template
   const existing = await prisma.modelSubmission.findUnique({
     where: { clientId_templateId: { clientId, templateId } },
-    select: { filePath: true },
+    select: { id: true, filePath: true },
   });
   if (existing) {
     const oldPath = path.join(process.cwd(), existing.filePath);
@@ -72,6 +74,11 @@ export async function POST(
     } catch {
       // Old file already gone — continue
     }
+
+    // Delete old metrics
+    await prisma.metricSnapshot.deleteMany({
+      where: { submissionId: existing.id },
+    });
   }
 
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -81,14 +88,33 @@ export async function POST(
   const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(filePath, buffer);
 
+  // Parse the Excel file
+  const parser = getParser(templateId);
+  let parseResult;
+  let parseError: string | null = null;
+
+  if (parser) {
+    try {
+      parseResult = await parser(buffer);
+    } catch (error) {
+      parseError = error instanceof Error ? error.message : "Unknown parsing error";
+      console.error(`Failed to parse ${templateId}:`, error);
+    }
+  } else {
+    parseError = `No parser available for template ${templateId}`;
+  }
+
+  // Upsert the submission with parsed data
   const submission = await prisma.modelSubmission.upsert({
     where: { clientId_templateId: { clientId, templateId } },
     update: {
       fileName: file.name,
       filePath: relativePath,
       fileSize: file.size,
-      status: "uploaded",
+      status: parseError ? "error" : "validated",
       uploadedById: userId ?? "",
+      parsedData: parseResult ? (parseResult.rawData as Prisma.InputJsonValue) : Prisma.JsonNull,
+      parsedAt: parseError ? null : new Date(),
     },
     create: {
       clientId,
@@ -96,10 +122,31 @@ export async function POST(
       fileName: file.name,
       filePath: relativePath,
       fileSize: file.size,
-      status: "uploaded",
+      status: parseError ? "error" : "validated",
       uploadedById: userId ?? "",
+      parsedData: parseResult ? (parseResult.rawData as Prisma.InputJsonValue) : Prisma.JsonNull,
+      parsedAt: parseError ? null : new Date(),
     },
   });
+
+  // Insert metrics if parsing succeeded
+  if (parseResult && parseResult.metrics.length > 0) {
+    await prisma.metricSnapshot.createMany({
+      data: parseResult.metrics.map((metric) => ({
+        submissionId: submission.id,
+        clientId,
+        templateId,
+        sheetName: metric.sheetName,
+        section: metric.section,
+        metricKey: metric.metricKey,
+        label: metric.label,
+        numericValue: metric.numericValue,
+        textValue: metric.textValue,
+        period: metric.period,
+        unit: metric.unit,
+      })),
+    });
+  }
 
   return NextResponse.json(
     {
@@ -111,6 +158,8 @@ export async function POST(
         fileSize: submission.fileSize,
         status: submission.status,
         uploadedAt: submission.createdAt.toISOString(),
+        metricsCount: parseResult?.metrics.length || 0,
+        parseError,
       },
     },
     { status: 201 }
