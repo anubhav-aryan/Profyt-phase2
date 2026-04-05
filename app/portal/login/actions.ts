@@ -30,6 +30,8 @@ export async function portalClientSignIn(
   passwordRaw: string,
   callbackUrl: string
 ): Promise<PortalSignInResult> {
+  console.log("[portalClientSignIn] Starting...", { clientCodeRaw, emailRaw });
+  
   if (!SECRET) {
     console.error("[portalClientSignIn] AUTH_SECRET is not set");
     return { ok: false, error: "config" };
@@ -40,26 +42,40 @@ export async function portalClientSignIn(
   const password = passwordRaw; // do NOT trim passwords — spaces are valid
 
   if (!clientCode || !email || !password) {
+    console.error("[portalClientSignIn] Missing required fields");
     return { ok: false, error: "credentials" };
   }
 
   // 1. Find active client
+  console.log("[portalClientSignIn] Looking up client:", clientCode);
   const client = await prisma.client.findFirst({
     where: { clientCode: { equals: clientCode, mode: "insensitive" }, isActive: true },
   });
-  if (!client) return { ok: false, error: "credentials" };
+  if (!client) {
+    console.error("[portalClientSignIn] Client not found");
+    return { ok: false, error: "credentials" };
+  }
 
   // 2. Find active user
+  console.log("[portalClientSignIn] Looking up user:", email);
   const clientUser = await prisma.clientUser.findFirst({
     where: { clientId: client.id, email, isActive: true },
   });
-  if (!clientUser) return { ok: false, error: "credentials" };
+  if (!clientUser) {
+    console.error("[portalClientSignIn] User not found");
+    return { ok: false, error: "credentials" };
+  }
 
   // 3. Verify password
+  console.log("[portalClientSignIn] Verifying password...");
   const ok = await compare(password, clientUser.passwordHash);
-  if (!ok) return { ok: false, error: "credentials" };
+  if (!ok) {
+    console.error("[portalClientSignIn] Password verification failed");
+    return { ok: false, error: "credentials" };
+  }
 
   // 4. Build JWT token (same shape as authConfig jwt callback produces)
+  console.log("[portalClientSignIn] Building JWT token...");
   const now = Math.floor(Date.now() / 1000);
   const jwtToken = await encode({
     secret: SECRET,
@@ -78,6 +94,7 @@ export async function portalClientSignIn(
   });
 
   // 5. Set session cookie (same name / options NextAuth uses)
+  console.log("[portalClientSignIn] Setting session cookie...");
   const isSecure =
     (process.env.NEXTAUTH_URL ?? process.env.AUTH_URL ?? "http:").startsWith(
       "https:"
@@ -91,5 +108,6 @@ export async function portalClientSignIn(
     maxAge: MAX_AGE,
   });
 
+  console.log("[portalClientSignIn] Success!");
   return { ok: true };
 }

@@ -53,6 +53,7 @@ export default function PortalLoginPage() {
       const emailFromForm = (emailEl?.value ?? "").trim();
       const passwordFromForm = passwordEl?.value ?? "";
 
+      console.log("[onSignIn] Calling portalClientSignIn...");
       const result = await portalClientSignIn(
         clientCode.trim(),
         emailFromForm,
@@ -60,7 +61,10 @@ export default function PortalLoginPage() {
         "/portal/dashboard"
       );
 
+      console.log("[onSignIn] Result:", result);
+
       if (!result.ok) {
+        console.error("[onSignIn] Sign-in failed:", result.error);
         setError(
           result.error === "credentials"
             ? "Invalid email or password"
@@ -68,9 +72,12 @@ export default function PortalLoginPage() {
         );
         return;
       }
+      
+      console.log("[onSignIn] Success, redirecting to dashboard...");
       router.push("/portal/dashboard");
       router.refresh();
-    } catch {
+    } catch (err) {
+      console.error("[onSignIn] Exception:", err);
       setError("Sign-in failed");
     } finally {
       setLoading(false);
