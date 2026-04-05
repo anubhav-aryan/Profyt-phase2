@@ -2,19 +2,15 @@
 
 import { portalClientSignIn } from "@/app/portal/login/actions";
 import { ProfytWordmark } from "@/components/ProfytWordmark";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import Link from "next/link";
 
-function PortalLoginInner() {
+export default function PortalLoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams?.get("callbackUrl") ?? "/portal/dashboard";
-
   const [step, setStep] = useState<1 | 2>(1);
   const [clientCode, setClientCode] = useState("");
   const [companyName, setCompanyName] = useState<string | null>(null);
-  /** Remount credential inputs (uncontrolled) so browser autofill + fresh fields work. */
   const [credentialsFormKey, setCredentialsFormKey] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -61,7 +57,7 @@ function PortalLoginInner() {
         clientCode.trim(),
         emailFromForm,
         passwordFromForm,
-        callbackUrl
+        "/portal/dashboard"
       );
 
       if (!result.ok) {
@@ -72,7 +68,7 @@ function PortalLoginInner() {
         );
         return;
       }
-      router.push(callbackUrl);
+      router.push("/portal/dashboard");
       router.refresh();
     } catch {
       setError("Sign-in failed");
@@ -239,21 +235,5 @@ function PortalLoginInner() {
         )}
       </div>
     </div>
-  );
-}
-
-export default function PortalLoginPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-off text-mid">
-          <p className="font-mono text-[11px] uppercase tracking-wider">
-            Loading…
-          </p>
-        </div>
-      }
-    >
-      <PortalLoginInner />
-    </Suspense>
   );
 }
