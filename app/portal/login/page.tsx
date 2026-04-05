@@ -9,7 +9,7 @@ import Link from "next/link";
 function PortalLoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/portal/dashboard";
+  const callbackUrl = searchParams?.get("callbackUrl") ?? "/portal/dashboard";
 
   const [step, setStep] = useState<1 | 2>(1);
   const [clientCode, setClientCode] = useState("");
